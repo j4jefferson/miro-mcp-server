@@ -34,9 +34,9 @@ export default {
         });
       }
 
-      // Authorization URL generator
+      // Authorization URL generator - FIXED URL
       if (url.pathname === '/auth') {
-        const authUrl = `https://api.miro.com/v1/oauth/authorize?response_type=code&client_id=${env.MIRO_CLIENT_ID}&redirect_uri=${encodeURIComponent(url.origin + '/oauth/callback')}&scope=boards:read%20boards:write`;
+        const authUrl = `https://miro.com/oauth/authorize?response_type=code&client_id=${env.MIRO_CLIENT_ID}&redirect_uri=${encodeURIComponent(url.origin + '/oauth/callback')}&scope=boards:read%20boards:write`;
         
         return new Response(`
           <html>
