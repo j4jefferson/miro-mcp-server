@@ -1,0 +1,23 @@
+{
+  "name": "miro-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Miro integration with Cloudflare Workers",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "mcp",
+    "miro",
+    "cloudflare",
+    "workers",
+    "collaboration"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}
