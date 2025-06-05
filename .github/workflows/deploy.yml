@@ -16,21 +16,32 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy
+    
+    permissions:
+      contents: read
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
       
-      - name: Setup Node.js
+      - name: Setup Node.js (LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 'lts/*'
+          cache: 'npm'
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       
       - name: Create KV namespaces if needed
         run: |
+          # Install jq if not available
+          if ! command -v jq &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+          
           # Check if production KV namespace exists and get ID
-          KV_ID=$(npx wrangler kv:namespace list | jq -r '.[] | select(.title=="miro-mcp-server-MIRO_TOKENS") | .id' || echo "")
+          KV_ID=$(npx wrangler kv:namespace list 2>/dev/null | jq -r '.[] | select(.title=="miro-mcp-server-MIRO_TOKENS") | .id' || echo "")
           if [ -z "$KV_ID" ]; then
             echo "Creating production KV namespace..."
             KV_ID=$(npx wrangler kv:namespace create "MIRO_TOKENS" --env production | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
@@ -38,7 +49,7 @@ jobs:
           echo "KV_NAMESPACE_ID=$KV_ID" >> $GITHUB_ENV
           
           # Check if preview KV namespace exists and get ID
-          KV_PREVIEW_ID=$(npx wrangler kv:namespace list | jq -r '.[] | select(.title=="miro-mcp-server-MIRO_TOKENS_preview") | .id' || echo "")
+          KV_PREVIEW_ID=$(npx wrangler kv:namespace list 2>/dev/null | jq -r '.[] | select(.title=="miro-mcp-server-MIRO_TOKENS_preview") | .id' || echo "")
           if [ -z "$KV_PREVIEW_ID" ]; then
             echo "Creating preview KV namespace..."
             KV_PREVIEW_ID=$(npx wrangler kv:namespace create "MIRO_TOKENS" --preview | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
@@ -64,11 +75,13 @@ jobs:
       - name: Set Miro secrets if not exists
         run: |
           # Only set secrets if they don't already exist (avoids overwriting)
-          npx wrangler secret list | grep -q "MIRO_CLIENT_ID" || \
-          echo "${{ secrets.MIRO_CLIENT_ID }}" | npx wrangler secret put MIRO_CLIENT_ID --env production
+          if ! npx wrangler secret list --env production | grep -q "MIRO_CLIENT_ID"; then
+            echo "${{ secrets.MIRO_CLIENT_ID }}" | npx wrangler secret put MIRO_CLIENT_ID --env production
+          fi
           
-          npx wrangler secret list | grep -q "MIRO_CLIENT_SECRET" || \
-          echo "${{ secrets.MIRO_CLIENT_SECRET }}" | npx wrangler secret put MIRO_CLIENT_SECRET --env production
+          if ! npx wrangler secret list --env production | grep -q "MIRO_CLIENT_SECRET"; then
+            echo "${{ secrets.MIRO_CLIENT_SECRET }}" | npx wrangler secret put MIRO_CLIENT_SECRET --env production
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
