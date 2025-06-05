@@ -1,0 +1,16 @@
+name = "miro-mcp-server"
+main = "src/index.js"
+compatibility_date = "2024-06-05"
+
+# Will be created during deployment
+[[kv_namespaces]]
+binding = "MIRO_TOKENS"
+id = "" # Will be set by GitHub Actions
+preview_id = "" # Will be set by GitHub Actions
+
+# Environment variables for development
+[env.development]
+name = "miro-mcp-server-dev"
+
+[env.production]
+name = "miro-mcp-server"
