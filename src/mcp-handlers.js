@@ -5,7 +5,10 @@ export async function handleOAuthCallback(request, env, corsHeaders) {
   const code = url.searchParams.get('code');
   const error = url.searchParams.get('error');
 
+  console.log('OAuth callback received:', { code: code ? 'present' : 'missing', error });
+
   if (error) {
+    console.log('OAuth error received:', error);
     return new Response(`
       <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
@@ -21,6 +24,7 @@ export async function handleOAuthCallback(request, env, corsHeaders) {
   }
 
   if (!code) {
+    console.log('No authorization code received');
     return new Response('Authorization code not found', { 
       status: 400, 
       headers: corsHeaders 
@@ -28,8 +32,15 @@ export async function handleOAuthCallback(request, env, corsHeaders) {
   }
 
   try {
+    console.log('Attempting token exchange with Miro...');
+    console.log('Client ID:', env.MIRO_CLIENT_ID ? 'present' : 'missing');
+    console.log('Client Secret:', env.MIRO_CLIENT_SECRET ? 'present' : 'missing');
+    console.log('Redirect URI:', url.origin + '/oauth/callback');
+    
     const miroAPI = new MiroAPI(env);
     const tokenData = await miroAPI.exchangeCodeForToken(code, url.origin);
+    
+    console.log('Token exchange successful');
     
     // Store tokens in KV
     await env.MIRO_TOKENS.put('access_token', tokenData.access_token);
@@ -60,6 +71,10 @@ export async function handleOAuthCallback(request, env, corsHeaders) {
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
           <h1>Authorization Failed</h1>
           <p>Error: ${error.message}</p>
+          <p>Please check the browser console and Cloudflare logs for more details.</p>
+          <div style="background: #f0f0f0; padding: 10px; border-radius: 5px; margin-top: 20px;">
+            <small>Debug info: Check Cloudflare Workers logs for detailed error information.</small>
+          </div>
         </body>
       </html>
     `, {
