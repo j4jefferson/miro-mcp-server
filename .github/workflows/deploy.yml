@@ -35,14 +35,45 @@ jobs:
           rm -f package-lock.json
           npm install
       
+      - name: Debug Cloudflare credentials
+        run: |
+          echo "Testing Cloudflare authentication..."
+          echo "Account ID length: ${#CLOUDFLARE_ACCOUNT_ID}"
+          echo "API Token length: ${#CLOUDFLARE_API_TOKEN}"
+          
+          # Test basic wrangler auth
+          npx wrangler whoami || echo "Wrangler auth failed"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      
       - name: Create KV namespaces if needed
         run: |
           echo "Creating KV namespaces..."
           
-          # Create production KV namespace
+          # Try to list existing namespaces first
+          echo "Listing existing KV namespaces..."
+          npx wrangler kv:namespace list || echo "Failed to list namespaces"
+          
+          # Create production KV namespace with better error handling
           echo "Creating production KV namespace..."
+          set +e  # Don't exit on error
           PROD_OUTPUT=$(npx wrangler kv:namespace create "MIRO_TOKENS" --env production 2>&1)
+          PROD_EXIT_CODE=$?
+          set -e  # Re-enable exit on error
+          
+          echo "Production KV creation exit code: $PROD_EXIT_CODE"
           echo "Production output: $PROD_OUTPUT"
+          
+          if [ $PROD_EXIT_CODE -ne 0 ]; then
+            echo "ERROR: Failed to create production KV namespace"
+            echo "This might be due to:"
+            echo "1. Invalid Cloudflare API token"
+            echo "2. Insufficient API token permissions"
+            echo "3. Invalid account ID"
+            echo "4. Cloudflare service issue"
+            exit 1
+          fi
           
           # Extract ID from output - try multiple patterns
           KV_ID=$(echo "$PROD_OUTPUT" | grep -o '"id": "[^"]*"' | head -1 | cut -d'"' -f4)
@@ -58,8 +89,18 @@ jobs:
           
           # Create preview KV namespace
           echo "Creating preview KV namespace..."
+          set +e
           PREVIEW_OUTPUT=$(npx wrangler kv:namespace create "MIRO_TOKENS" --preview 2>&1)
+          PREVIEW_EXIT_CODE=$?
+          set -e
+          
+          echo "Preview KV creation exit code: $PREVIEW_EXIT_CODE"
           echo "Preview output: $PREVIEW_OUTPUT"
+          
+          if [ $PREVIEW_EXIT_CODE -ne 0 ]; then
+            echo "ERROR: Failed to create preview KV namespace"
+            exit 1
+          fi
           
           # Extract preview ID
           KV_PREVIEW_ID=$(echo "$PREVIEW_OUTPUT" | grep -o '"id": "[^"]*"' | head -1 | cut -d'"' -f4)
