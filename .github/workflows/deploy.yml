@@ -5,6 +5,12 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deployment'
+        required: false
+        default: 'Manual deployment'
 
 jobs:
   deploy:
@@ -75,3 +81,7 @@ jobs:
           echo "📋 MCP Server URL: https://miro-mcp-server.YOUR_SUBDOMAIN.workers.dev/mcp"
           echo "🔐 Authorization URL: https://miro-mcp-server.YOUR_SUBDOMAIN.workers.dev/auth"
           echo "💚 Health Check: https://miro-mcp-server.YOUR_SUBDOMAIN.workers.dev/health"
+          
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual deployment reason: ${{ github.event.inputs.reason }}"
+          fi
